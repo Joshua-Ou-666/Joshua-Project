@@ -272,7 +272,7 @@ def clone_judgement():
     df['Clone_Definition_modified (此列用于人工校正)'] = df['Clone_Definition']
 
     # 获取新的文件名
-    new_file_name = os.path.splitext(input_file_name)[0] + '_Clone_Judgement.xls'
+    new_file_name = os.path.splitext(input_file_name)[0] + '_Clone_Judgement.xlsx'
     
     # 保存增加克隆判断的表格为新的文件名
     new_output_file_path = os.path.join(output_dir, new_file_name)
@@ -311,9 +311,9 @@ def statistics():
     print("读取统计模板文件和克隆判断文件成功, 开始统计数据, 请耐心等候")
 
     # 读取模板文件
-    template_df = pd.read_excel(template_file_path, engine='xlrd')
+    template_df = pd.read_excel(template_file_path, engine='openpyxl')
     # 读取克隆判断文件
-    data_df = pd.read_excel(data_file_path, engine='xlrd')
+    data_df = pd.read_excel(data_file_path, engine='openpyxl')
     
     # 统计模板文件中每一个Gene_Mfg_ID在完整数据文件中出现的次数，并输出到Clone_Number列
     # 如果在完整数据文件中找不到某一个值，则输出0
@@ -415,7 +415,7 @@ def statistics():
         data_df[col] = data_df['Gene_Mfg_ID'].map(template_df.set_index('Gene_Mfg_ID')[col])
 
     # 获取新的文件名，保存更新后的完整数据文件
-    new_data_file_name = os.path.splitext(data_file_name)[0] + '_Judgement_updated.xls'
+    new_data_file_name = os.path.splitext(data_file_name)[0] + '_Judgement_updated.xlsx'
     updated_data_file_path = os.path.join(data_file_dir, new_data_file_name)
     data_df.to_excel(updated_data_file_path, index=False)
     print(f"增加统计注释的克隆判断文件已保存为: {updated_data_file_path}\n")
@@ -443,7 +443,7 @@ def clone_selection():
     
 
     # 读取完整数据文件
-    df = pd.read_excel(data_file_path, engine='xlrd')
+    df = pd.read_excel(data_file_path, engine='openpyxl')
 
     #检查导入的文件是否已有克隆判断
     if 'To_be_defined' in df['Clone_Definition'].values:
@@ -618,7 +618,7 @@ def clone_selection():
         # print(f"未处理的Gene_Mfg_ID组已保存为表格: {new_output_file_path}")
     
     # 保存增加克隆选择的表格为Clone_selection.xls     
-    new_data_file_name = os.path.splitext(data_file_name)[0] + '_Clone_Definition&Selection.xls'
+    new_data_file_name = os.path.splitext(data_file_name)[0] + '_Clone_Definition&Selection.xlsx'
     new_output_file_path = os.path.join(data_file_dir, new_data_file_name)
     df.to_excel(new_output_file_path, index=False)
     print(f"增加克隆选择的完整数据表格已保存为: {new_output_file_path}")
