@@ -33,16 +33,16 @@ def sheet_modification():
     new_columns = [
         'Dynamic_Depth', 'Dynamic_depth_Judgement', 'Lowest_MAP_Judgement', 
         'Large_Indel_Judgement', 'GATK_Judgement', 'Clone_Definition', 
-        'Clone_Definition_modified (此列用于人工校正)', 'Manual_Selected','ANY_Clone_is_TRUE/CONCERN', 'Note'
+        'Clone_Definition_modified (此列用于人工校正)', 'Manual_Selected','TRUE_Number', 
+        'CONCERN_Number', 'Picking_Clone_Number', 'ANY_Clone_is_TRUE/CONCERN', 'Note'
     ]
-    # 删去这些列，留存：'TRUE_Number', 'CONCERN_Number', 'Picking_Clone_Number', 'ErrFree_rate', 'CONCERN_rate'
 
     # 为新列赋予默认值
     for col in new_columns:
         df[col] = ''
 
     # 修改后的列顺序
-    fixed_columns = ['Gene_Mfg_ID', 'PRJ', 'Inquiry_ID', 'GeneName', 'VectorID', 'NC_Length', 'Mfg_ID_Abbr', 'Clone#', 'Clone_Plate', 
+    fixed_columns = ['PRJ', 'Gene_Mfg_ID', 'Inquiry_ID', 'GeneName', 'VectorID', 'NC_Length', 'Mfg_ID_Abbr', 'Clone#', 'Clone_Plate', 
                      'Clone_Position', 'Reformat_Plate', 'Reformat_Position', 'I7', 'I5', 'PLBC', 'Sample_Name', 'Ref_id', 'Ref_full_len', 
                      'Ref_analysis_len', 'highest_%MAP', 'lowest_%MAP', 'q10_%MAP', 'nbases>=99%MAP', 'nbases>=95%MAP', 'nbases>=90%MAP', 
                      'nbases_failed(0)', 'pos_failed(0)', 'nbases_failed(50)', 'pos_failed(50)', 'nbases_failed(90)', 'pos_failed(90)', 
@@ -53,19 +53,21 @@ def sheet_modification():
                      'flagstat', 'minimum_depth', 'median_depth', 'Dynamic_Depth', 'lowest_MAP', 'site_1', 'site_2', 'fwd_ratio2', 'site_20', 'site_21', 
                      'rev_ratio2', 'GATK_INDEL', 'GATK_SNP', 'GATK_VCF_AD', 'GATK_VCF_DP', 'GATK_AD/DP', 'Dynamic_depth_Judgement', 'Lowest_MAP_Judgement', 
                      'Large_Indel_Judgement', 'GATK_Judgement', 'Clone_Definition', 'Clone_Definition_modified (此列用于人工校正)', 
-                     'Manual_Selected', 'ANY_Clone_is_TRUE/CONCERN', 'Note'
+                     'Manual_Selected', 'TRUE_Number', 'CONCERN_Number', 'Picking_Clone_Number', 'ANY_Clone_is_TRUE/CONCERN', 'Note'
     ]
-    # 删去这些列，留存：'TRUE_Number', 'CONCERN_Number', 'Picking_Clone_Number', 'ErrFree_rate', 'CONCERN_rate'
-    
+
     # 按照固定的列顺序重新排列
     df = df[fixed_columns]
 
     # 删除不需要的列
-    columns_to_remove = ['Ref_id', 'fq_name', '#rname', 'I7_reads', 'site_11', 'site_12', 'site_13', 
+    columns_to_remove = ['Reformat_Position', 'Ref_id', 'fq_name', '#rname', 'I7_reads', 'site_11', 'site_12', 'site_13', 
                          'site_14', 'site_15', 'site_16', 'site_17', 'fwd_ratio1', 'site_30', 'site_31', 
                          'site_32', 'site_33', 'site_34', 'site_35', 'site_36', 'rev_ratio1'
     ] 
     df = df.drop(columns=columns_to_remove)
+
+    # 将'Reformat_Plate'列名称改写为'NGS_Type'
+    df.rename(columns={'Reformat_Plate': 'NGS_Type'}, inplace=True)
 
     # 获取原始文件的目录
     output_dir = os.path.dirname(file_path)
@@ -327,7 +329,7 @@ def statistics():
                 (data_df['Clone_Definition_modified (此列用于人工校正)'] == 'TRUE')].shape[0]
         if x in data_df['Gene_Mfg_ID'].tolist() else 0)
     
-    # 统计模板文件中每一个Gene_Mfg_ID在完整数据文件的'Clone_Definition_modified (此列用于人工校正)'中出现Lowest_MAP_CONCERN的次数，以及出现GATK_SNP_CONCERN的次数，将两项相加，并输出到Lowest_MAP/GATK_SNP_CONCERN_number列。如果在完整数据文件中找不到某一个值，则输出0
+    # 统计模板文件中每一个Gene_Mfg_ID在完整数据文件的'Clone_Definition_modified (此列用于人工校正)'中出现Lowest_MAP_CONCERN的次数，以及出现GATK_SNP_CONCERN的次数，以及Lowest_MAP&SNP_CONCERN, 将三项相加，并输出到Lowest_MAP/GATK_SNP_CONCERN_number列。如果在完整数据文件中找不到某一个值，则输出0
     template_df['Lowest_MAP/GATK_SNP_CONCERN_Number'] = template_df['Gene_Mfg_ID'].apply(lambda x: 
         data_df[(data_df['Gene_Mfg_ID'] == x) & 
                 (data_df['Clone_Definition_modified (此列用于人工校正)'] == 'Lowest_MAP_CONCERN')].shape[0] + 
@@ -412,12 +414,17 @@ def statistics():
     print(f"统计数据已保存为: {merged_output_file_path}")
 
     # 将统计数据输出到完整数据文件的同名列
-    columns_to_update = ['ANY_Clone_is_TRUE/CONCERN']
+    columns_to_update = ['TRUE_Number', 'Picking_Clone_Number', 'ANY_Clone_is_TRUE/CONCERN']
     for col in columns_to_update:
         data_df[col] = data_df['Gene_Mfg_ID'].map(template_df.set_index('Gene_Mfg_ID')[col])
 
+    # 将统计文件中带CONCERN字符的列相加，然后输出到完整数据文件的CONCERN_Number列
+    data_df['CONCERN_Number'] = data_df['Gene_Mfg_ID'].map(template_df.set_index('Gene_Mfg_ID')['Lowest_MAP/GATK_SNP_CONCERN_Number'] 
+                                                           + template_df.set_index('Gene_Mfg_ID')['LARGE_INDEL_CONCERN_Number'] 
+                                                           + template_df.set_index('Gene_Mfg_ID')['GATK_INDEL_CONCERN_Number'])
+
     # 获取新的文件名，保存更新后的完整数据文件
-    new_data_file_name = os.path.splitext(data_file_name)[0] + '_Judgement_updated.xlsx'
+    new_data_file_name = os.path.splitext(data_file_name)[0] + '_Clone_Judgement_updated.xlsx'
     updated_data_file_path = os.path.join(data_file_dir, new_data_file_name)
     data_df.to_excel(updated_data_file_path, index=False)
     print(f"增加统计注释的克隆判断文件已保存为: {updated_data_file_path}\n")
@@ -452,7 +459,7 @@ def clone_selection():
         print("导入的文件中存在未定义的克隆，请检查文件内容或代码逻辑是否遍历所有克隆, 程序自动退出")
         exit()
     else:
-        print("读取文件成功, 开始进行克隆选择, 请耐心等候")
+        print("读取文件成功, 开始进行克隆选择, 请耐心等候\n")
     
     # 初始化Manual_Selected列
     df['Manual_Selected'] = 'FALSE'
@@ -610,7 +617,7 @@ def clone_selection():
                     df.loc[df['Gene_Mfg_ID'] == group['Gene_Mfg_ID'].iloc[0], 'Note'] = '存在CONCERN克隆,需要人工检查和选择'
                     df.loc[df['Gene_Mfg_ID'] == group['Gene_Mfg_ID'].iloc[0], 'Handled'] = 'Done'
 
-    # 检查是否有未处理的Gene_Mfg_ID组, 如果有则保存为Mfg_ID_TBD.xls, 如果没有则保存为Clone_Definition&selection.xls
+    # 检查是否有未处理的Gene_Mfg_ID组, 如果有则保存为Mfg_ID_TBD.xls, 如果没有则保存为Clone_Definition&selection.xlsx
     if 'To_Be_Done' in df['Handled'].tolist():
         print("存在未处理的Gene_Mfg_ID组, 请人工检查分析未处理的Gene_Mfg_ID组, 或检查代码逻辑是否遍历所有Gene_Mfg_ID组")
         # df_to_be_done = df[df['Handled'] == 'To_Be_Done']
@@ -619,12 +626,56 @@ def clone_selection():
         # df_to_be_done.to_excel(new_output_file_path, index=False)
         # print(f"未处理的Gene_Mfg_ID组已保存为表格: {new_output_file_path}")
     
-    # 保存增加克隆选择的表格为Clone_selection.xls     
-    new_data_file_name = os.path.splitext(data_file_name)[0] + '_Clone_Definition&Selection.xlsx'
+    # 保存增加克隆选择的完整数据表格为Summary.xlsx     
+    new_data_file_name = os.path.splitext(data_file_name)[0] + '_Summary.xlsx'
     new_output_file_path = os.path.join(data_file_dir, new_data_file_name)
     df.to_excel(new_output_file_path, index=False)
-    print(f"增加克隆选择的完整数据表格已保存为: {new_output_file_path}")
+    print(f"增加克隆选择的完整数据表格已保存为: {new_output_file_path}\n")
     # return df, output_dir
+
+    # 将每个Gene_Mfg_ID组被选择的克隆的指定信息输出到一个新的表格中
+    selected_df = df[df['Manual_Selected'] != 'FALSE']
+    # 保留指定列
+    selected_df = selected_df[['PRJ', 'Gene_Mfg_ID', 'Inquiry_ID', 'GeneName', 'VectorID', 'NC_Length', 'Mfg_ID_Abbr', 'Clone#', 'Clone_Plate', 
+                     'Clone_Position', 'flagstat', 'median_depth', 'lowest_MAP','Manual_Selected', 'Note']]
+   
+    ## 按照以下要求对selected_df进行多重排序
+    # 1. 首先从VectorID中提取以下关键字进行分类，顺序是：Amp, Kan, Zeo, SpmR, CmR, SmR
+    # 2. 在第1点的每个类别中，按照以下要求多重排序：
+    #    a. 根据VectorID前9个字符升序
+    #    b. Inqury_ID升序
+    #    c. PRJ升序
+    #    d. Gene_Mfg_ID升序
+    # 提取VectorID中的关键字
+    def extract_keyword(vector_id):
+        keywords = ['Amp', 'Kan', 'Zeo', 'SpmR', 'CmR', 'SmR']
+        for keyword in keywords:
+            if keyword in vector_id:
+                return keyword
+        return ''
+    # 增加一列'Keyword'用于排序
+    selected_df['Keyword'] = selected_df['VectorID'].apply(extract_keyword)
+    # 按照要求进行多重排序
+    selected_df = selected_df.sort_values(by=['Keyword', 'VectorID', 'Inquiry_ID', 'PRJ', 'Gene_Mfg_ID'])
+    # 删除'Keyword'列
+    selected_df = selected_df.drop(columns=['Keyword'])
+
+    # 将VectorID中包含特定关键字的克隆放到表格最后
+    keywords = ['pGZ1480', 'pGZ1551', 'pGZ1500']
+    mask = selected_df['VectorID'].str[:7].isin(keywords)
+    non_keyword_df = selected_df[~mask]
+    keyword_df = selected_df[mask]
+    selected_df = pd.concat([non_keyword_df, keyword_df])
+
+
+    # print(selected_df['VectorID'])
+    # exit('troubleshoot')
+
+    # 保存选择的克隆信息表格为Clone_Selection.xlsx
+    selected_file_name = os.path.splitext(data_file_name)[0] + '_Clone_Selection.xlsx'
+    selected_output_file_path = os.path.join(data_file_dir, selected_file_name)
+    selected_df.to_excel(selected_output_file_path, index=False)
+    print(f"克隆选择表格已保存为: {selected_output_file_path}\n")
 
 if __name__ == "__main__":
     print("欢迎使用ColonyNGS数据自动化处理程序\n")
@@ -637,7 +688,7 @@ if __name__ == "__main__":
         if user_input != 'Y':
             print("操作已取消")
             exit()
-        elif user_input != 'Y':
+        elif user_input == 'Y':
             clone_selection()
             print("克隆选择已完成\n")
     elif user_input == '2':
@@ -661,7 +712,7 @@ if __name__ == "__main__":
             print("克隆选择已完成\n")
     elif user_input == '1':
         print("请准备好原始表格, 检查原始表格每一行的第一个单元格都是Gene_Mfg_ID, 否则需要手动修改\n")
-        print('请使用excel将原始表格另存为.xls格式, 该步骤不可省略\n')
+        print('请使用excel将原始表格另存为.xlsx格式, 该步骤不可省略\n')
         user_input = input("请确认是否完成上述操作？输入 'Y' 确认，输入 任意字符 退出: \n")
         if user_input != 'Y':
             print("操作已取消")
