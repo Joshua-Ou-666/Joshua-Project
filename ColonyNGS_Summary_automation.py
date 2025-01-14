@@ -617,7 +617,7 @@ def clone_selection():
                     df.loc[df['Gene_Mfg_ID'] == group['Gene_Mfg_ID'].iloc[0], 'Note'] = '存在CONCERN克隆,需要人工检查和选择'
                     df.loc[df['Gene_Mfg_ID'] == group['Gene_Mfg_ID'].iloc[0], 'Handled'] = 'Done'
 
-    # 检查是否有未处理的Gene_Mfg_ID组, 如果有则保存为Mfg_ID_TBD.xls, 如果没有则保存为Clone_Definition&selection.xlsx
+    # 检查是否有未处理的Gene_Mfg_ID组并提示
     if 'To_Be_Done' in df['Handled'].tolist():
         print("存在未处理的Gene_Mfg_ID组, 请人工检查分析未处理的Gene_Mfg_ID组, 或检查代码逻辑是否遍历所有Gene_Mfg_ID组")
         # df_to_be_done = df[df['Handled'] == 'To_Be_Done']
@@ -626,23 +626,24 @@ def clone_selection():
         # df_to_be_done.to_excel(new_output_file_path, index=False)
         # print(f"未处理的Gene_Mfg_ID组已保存为表格: {new_output_file_path}")
     
-    # 保存增加克隆选择的完整数据表格为Summary.xlsx     
+    # 保存增加克隆选择的完整数据表格为Summary.xlsx, 首先用Gene_Mfg_ID列进行升序排序
+    df = df.sort_values(by=['Gene_Mfg_ID'])
     new_data_file_name = os.path.splitext(data_file_name)[0] + '_Summary.xlsx'
     new_output_file_path = os.path.join(data_file_dir, new_data_file_name)
     df.to_excel(new_output_file_path, index=False)
     print(f"增加克隆选择的完整数据表格已保存为: {new_output_file_path}\n")
     # return df, output_dir
 
-    # 将每个Gene_Mfg_ID组被选择的克隆的指定信息输出到一个新的表格中
+    ## 将每个Gene_Mfg_ID组被选择的克隆的指定信息输出到一个新的表格中
     selected_df = df[df['Manual_Selected'] != 'FALSE']
     # 保留指定列
     selected_df = selected_df[['PRJ', 'Gene_Mfg_ID', 'Inquiry_ID', 'GeneName', 'VectorID', 'NC_Length', 'Mfg_ID_Abbr', 'Clone#', 'Clone_Plate', 
                      'Clone_Position', 'flagstat', 'median_depth', 'lowest_MAP','Manual_Selected', 'Note']]
    
-    ## 按照以下要求对selected_df进行多重排序
+    # 按照以下要求对selected_df进行多重排序
     # 1. 首先从VectorID中提取以下关键字进行分类，顺序是：Amp, Kan, Zeo, SpmR, CmR, SmR
     # 2. 在第1点的每个类别中，按照以下要求多重排序：
-    #    a. 根据VectorID前9个字符升序
+    #    a. VectorID升序
     #    b. Inqury_ID升序
     #    c. PRJ升序
     #    d. Gene_Mfg_ID升序
